@@ -90,7 +90,7 @@ VARIATIONAL = True
 HEIGHT = 32
 WIDTH = 32
 BATCH_SIZE = 128
-LATENT_DIM = 16
+LATENT_DIM = 128
 START_FILTERS = 32
 CAPACITY = 2
 CONDITIONING = True
@@ -115,7 +115,7 @@ x_train = x_train.astype('float32') / 255.0  # нормализация [0, 1]
 x_test = x_test.astype('float32') / 255.0
 
 # Параметры обучения
-EPOCHS = 5
+EPOCHS = 2
 BATCH_SIZE = 128
 VALIDATION_SPLIT = 0.1
 
@@ -134,6 +134,9 @@ history = vae.fit(
     validation_split=VALIDATION_SPLIT,
     callbacks=callbacks
 )
+vae.save("vae_final.h5")  # Полная VAE модель (encoder + decoder)
+encoder.save("encoder_final.h5")  # Только encoder
+decoder.save("decoder_final.h5")  # Только decoder
 
 # Оценка модели
 test_loss = vae.evaluate(
