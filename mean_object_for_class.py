@@ -1,48 +1,46 @@
 import numpy as np
+import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.datasets import cifar10
+from tensorflow.keras.layers import Layer
+import matplotlib.pyplot as plt
+
+# Определяем KLDivergenceLayer (как в исходном коде)
+class KLDivergenceLayer(Layer):
+    def call(self, inputs):
+        z_mean, z_log_var = inputs
+        kl_loss = -0.5 * tf.reduce_sum(
+            1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var),
+            axis=-1
+        )
+        self.add_loss(tf.reduce_mean(kl_loss))
+        return z_mean
 
 # Загрузка данных CIFAR-10 (с метками классов)
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 x_train = x_train.astype('float32') / 255.0  # нормализация [0, 1]
 
-# Загрузка encoder (убедитесь, что путь правильный)
+# Загрузка encoder с указанием custom_objects
 encoder = load_model("encoder_final.h5", custom_objects={"KLDivergenceLayer": KLDivergenceLayer})
 
-# Список классов CIFAR-10 (всего 10)
+# Список классов CIFAR-10
 class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
 
-# Создаем словарь для хранения средних латентных векторов
+# Вычисляем средние латентные векторы для каждого класса
 class_latent_means = {}
-
-# Для каждого класса вычисляем средний латентный вектор
 for class_id in range(10):
-    # Выбираем все изображения данного класса
     class_images = x_train[y_train.flatten() == class_id]
-    
-    # Кодируем их в латентное пространство
     latent_vectors = encoder.predict(class_images, batch_size=128)
-    
-    # Вычисляем среднее по всем векторам
     mean_latent = np.mean(latent_vectors, axis=0)
-    
-    # Сохраняем результат
     class_latent_means[class_names[class_id]] = mean_latent
-
     print(f"Class: {class_names[class_id]}, Mean Latent Shape: {mean_latent.shape}")
 
-import matplotlib.pyplot as plt
+# (Опционально) Визуализация средних изображений
+decoder = load_model("decoder_final.h5")  # decoder не требует custom_objects
 
-# Загружаем decoder
-decoder = load_model("decoder_final.h5")
-
-# Визуализируем средние изображения для каждого класса
 plt.figure(figsize=(15, 8))
 for i, (class_name, mean_latent) in enumerate(class_latent_means.items()):
-    # Декодируем средний вектор в изображение
     generated_image = decoder.predict(mean_latent.reshape(1, -1))[0]
-    
-    # Рисуем
     plt.subplot(2, 5, i + 1)
     plt.imshow(generated_image)
     plt.title(class_name)
